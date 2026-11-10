@@ -59,8 +59,13 @@ final class PreferencesWindowController: NSWindowController {
 
         let folderRow = NSStackView(views: [folderIcon, names])
         folderRow.spacing = 10
-        let buttons = NSStackView(views: [showButton, NSView(), resetButton, chooseButton])
+        let buttons = NSStackView()
+        buttons.setViews([showButton], in: .leading)
+        buttons.setViews([resetButton, chooseButton], in: .trailing)
         buttons.spacing = 8
+        for button in [showButton, resetButton, chooseButton] {
+            button.setContentCompressionResistancePriority(.required, for: .horizontal)
+        }
 
         let hint = NSTextField(labelWithString: "The Save dialog (⌘S) opens in this folder.")
         hint.font = .systemFont(ofSize: NSFont.smallSystemFontSize)
