@@ -94,7 +94,10 @@ struct PreferencesWindowControllerTests {
         func buttons(in view: NSView) -> [NSButton] {
             view.subviews.flatMap { ($0 as? NSButton).map { [$0] } ?? buttons(in: $0) }
         }
-        let frames = buttons(in: content).map { $0.convert($0.bounds, to: content) }
+        // Stack spacing applies to alignment rects; frames include bezel padding that can overlap.
+        let frames = buttons(in: content).map {
+            $0.superview!.convert($0.alignmentRect(forFrame: $0.frame), to: content)
+        }
         #expect(frames.count == 3)
         for (i, frame) in frames.enumerated() {
             #expect(content.bounds.contains(frame))
