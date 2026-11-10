@@ -8,6 +8,7 @@ public final class AppDelegate: NSObject, NSApplicationDelegate, NSMenuDelegate 
     private var hotKey: HotKey?
     private var session: CaptureSession?
     private var isCapturing = false
+    private lazy var preferencesWindow = PreferencesWindowController()
     private let launchAtLoginItem = NSMenuItem(title: "Launch at Login", action: #selector(toggleLaunchAtLogin), keyEquivalent: "")
 
     override public init() {
@@ -28,6 +29,7 @@ public final class AppDelegate: NSObject, NSApplicationDelegate, NSMenuDelegate 
         captureItem.keyEquivalentModifierMask = [.command, .shift]
         menu.addItem(captureItem)
         menu.addItem(.separator())
+        menu.addItem(NSMenuItem(title: "Settings…", action: #selector(showPreferences), keyEquivalent: ","))
         menu.addItem(launchAtLoginItem)
         menu.addItem(.separator())
         menu.addItem(NSMenuItem(title: "Quit Paneless", action: #selector(NSApplication.terminate(_:)), keyEquivalent: "q"))
@@ -45,6 +47,10 @@ public final class AppDelegate: NSObject, NSApplicationDelegate, NSMenuDelegate 
 
     public func menuWillOpen(_ menu: NSMenu) {
         launchAtLoginItem.state = SMAppService.mainApp.status == .enabled ? .on : .off
+    }
+
+    @objc private func showPreferences() {
+        preferencesWindow.show()
     }
 
     @objc private func startCapture() {

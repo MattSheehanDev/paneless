@@ -3,8 +3,6 @@ import UniformTypeIdentifiers
 
 @MainActor
 enum ImageExporter {
-    private static let lastDirectoryKey = "LastSaveDirectory"
-
     static func copy(_ image: CGImage, pointSize: CGSize) {
         let rep = bitmap(image, pointSize: pointSize)
         let pasteboard = NSPasteboard.general
@@ -24,8 +22,7 @@ enum ImageExporter {
         panel.allowedContentTypes = [.png, .jpeg]
         panel.canCreateDirectories = true
         panel.nameFieldStringValue = defaultFileName()
-        panel.directoryURL = UserDefaults.standard.url(forKey: lastDirectoryKey)
-            ?? FileManager.default.urls(for: .desktopDirectory, in: .userDomainMask).first
+        panel.directoryURL = Preferences.shared.saveDirectory
 
         NSApp.activate(ignoringOtherApps: true)
         panel.begin { response in
@@ -34,7 +31,6 @@ enum ImageExporter {
 
             do {
                 try encodedData(image, pointSize: pointSize, pathExtension: url.pathExtension)?.write(to: url, options: .atomic)
-                UserDefaults.standard.set(url.deletingLastPathComponent(), forKey: lastDirectoryKey)
             } catch {
                 NSAlert(error: error).runModal()
             }
