@@ -1,0 +1,766 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Paneless — screenshots, marked up in a snap</title>
+  <meta name="description" content="A Lightshot-style screenshot tool for macOS. Press ⇧⌘9, select an area or a window, mark it up, and copy or save it.">
+  <meta property="og:title" content="Paneless — screenshots, marked up in a snap">
+  <meta property="og:description" content="A Lightshot-style screenshot tool for macOS. Press ⇧⌘9, select an area or a window, mark it up, and copy or save it.">
+  <link rel="icon" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'><text y='.9em' font-size='90'>📸</text></svg>">
+  <style>
+    :root {
+      --bg-1: #071a33;
+      --bg-2: #0d4f8b;
+      --bg-3: #0b6f78;
+      --text: #f1f8ff;
+      --muted: #a9c3dc;
+      --card: rgba(255, 255, 255, 0.07);
+      --card-border: rgba(255, 255, 255, 0.14);
+      --accent: #7cf0d9;
+      --blue: #4285f4;
+      --mono: ui-monospace, SFMono-Regular, Menlo, monospace;
+    }
+
+    * { box-sizing: border-box; }
+
+    body {
+      margin: 0;
+      font-family: -apple-system, BlinkMacSystemFont, "SF Pro Text", "Helvetica Neue", sans-serif;
+      color: var(--text);
+      background:
+        radial-gradient(1200px 700px at 10% 0%, var(--bg-2), transparent 60%),
+        radial-gradient(900px 600px at 95% 90%, var(--bg-3), transparent 60%),
+        var(--bg-1);
+      background-attachment: fixed;
+      line-height: 1.55;
+      -webkit-font-smoothing: antialiased;
+    }
+
+    a { color: var(--accent); }
+
+    .wrap { max-width: 1080px; margin: 0 auto; padding: 0 24px; }
+
+    /* Fake macOS menu bar */
+    .menubar {
+      position: sticky; top: 0; z-index: 20;
+      height: 34px;
+      display: flex; align-items: center; justify-content: flex-end; gap: 20px;
+      padding: 0 20px;
+      background: rgba(5, 20, 45, 0.55);
+      backdrop-filter: blur(20px);
+      -webkit-backdrop-filter: blur(20px);
+      font-size: 14px; font-weight: 500;
+    }
+    .menubar .left { margin-right: auto; display: flex; gap: 18px; align-items: center; }
+    .menubar .left strong { font-weight: 700; }
+    .menubar a { color: var(--text); text-decoration: none; opacity: 0.85; }
+    .menubar a:hover { opacity: 1; }
+    .menubar .status {
+      display: inline-flex; align-items: center; justify-content: center;
+      width: 40px; height: 26px; border-radius: 6px;
+      background: rgba(255, 255, 255, 0.18); cursor: pointer; border: 0; color: var(--text);
+    }
+
+    /* Hero */
+    .hero { text-align: center; padding: 80px 0 36px; }
+    .eyebrow { color: var(--accent); font-weight: 600; letter-spacing: 0.04em; text-transform: uppercase; font-size: 13px; }
+    h1 { font-size: clamp(42px, 6.4vw, 72px); line-height: 1.02; margin: 12px auto 18px; letter-spacing: -0.03em; max-width: 14em; }
+    h1 .grad { background: linear-gradient(90deg, #ffffff, var(--accent)); -webkit-background-clip: text; background-clip: text; color: transparent; }
+    .lede { font-size: 20px; color: var(--muted); max-width: 34em; margin: 0 auto 30px; }
+    .ctas { display: flex; gap: 12px; flex-wrap: wrap; justify-content: center; }
+    .btn {
+      display: inline-flex; align-items: center; gap: 8px;
+      padding: 12px 20px; border-radius: 10px;
+      font-weight: 600; text-decoration: none; font-size: 15px;
+    }
+    .btn.primary { background: var(--text); color: var(--bg-1); }
+    .btn.secondary { color: var(--text); border: 1px solid var(--card-border); background: var(--card); }
+    .fineprint { margin: 16px 0 0; color: var(--muted); font-size: 14px; }
+
+    kbd {
+      font-family: -apple-system, BlinkMacSystemFont, sans-serif; font-size: 0.85em; font-weight: 600;
+      padding: 2px 7px; border-radius: 6px;
+      background: rgba(255, 255, 255, 0.12); border: 1px solid rgba(255, 255, 255, 0.2);
+      border-bottom-width: 2px; color: var(--text); white-space: nowrap;
+    }
+
+    /* Interactive demo screen */
+    .demo-wrap { padding: 8px 0 24px; }
+    .screen {
+      position: relative; width: 100%; aspect-ratio: 16 / 10; max-height: 640px;
+      border-radius: 14px; overflow: hidden; user-select: none; touch-action: none;
+      background:
+        radial-gradient(60% 80% at 20% 20%, #3aa0d8 0%, transparent 70%),
+        radial-gradient(60% 80% at 85% 80%, #1fb59e 0%, transparent 70%),
+        linear-gradient(135deg, #12457e, #0b2c57);
+      box-shadow: 0 40px 100px rgba(0, 8, 30, 0.65), 0 0 0 1px rgba(255, 255, 255, 0.12);
+    }
+    .win {
+      position: absolute; border-radius: 10px; overflow: hidden;
+      background: #f7f8fa; color: #24292f;
+      box-shadow: 0 18px 50px rgba(0, 10, 30, 0.45), 0 0 0 0.5px rgba(0, 0, 0, 0.3);
+      font-size: 12px;
+    }
+    .win .bar { height: 28px; display: flex; align-items: center; gap: 7px; padding: 0 12px; background: #e9ebef; border-bottom: 1px solid #d5d8de; }
+    .win .bar i { width: 11px; height: 11px; border-radius: 50%; display: inline-block; }
+    .win .bar i:nth-child(1) { background: #ff5f57; } .win .bar i:nth-child(2) { background: #febc2e; } .win .bar i:nth-child(3) { background: #28c840; }
+    .win .bar span { margin-left: 8px; color: #6b7280; font-weight: 600; }
+    .win.dark { background: #1e2230; color: #d6deeb; }
+    .win.dark .bar { background: #272c3d; border-color: #1a1e2b; }
+    .win.dark .bar span { color: #8b93a8; }
+    .code { padding: 14px 16px; font-family: var(--mono); font-size: 12px; line-height: 1.8; white-space: pre; }
+    .code .k { color: #c792ea; } .code .s { color: #c3e88d; } .code .f { color: #82aaff; } .code .c { color: #637777; }
+    .page { padding: 16px 18px; }
+    .page h4 { margin: 4px 0 10px; font-size: 18px; }
+    .page .chart { display: flex; align-items: flex-end; gap: 8px; height: 90px; margin: 14px 0; }
+    .page .chart b { flex: 1; border-radius: 4px 4px 0 0; background: linear-gradient(#4f8ff7, #2f6bd6); }
+    .page p { margin: 0 0 8px; color: #57606a; line-height: 1.6; }
+    .page .pill { display: inline-block; padding: 3px 10px; border-radius: 99px; background: #e7f0ff; color: #1f5fd1; font-weight: 600; margin-right: 6px; }
+
+    #overlay { position: absolute; inset: 0; width: 100%; height: 100%; }
+    .screen.capturing #overlay { cursor: crosshair; }
+
+    .start {
+      position: absolute; left: 50%; bottom: 22px; transform: translateX(-50%);
+      display: inline-flex; align-items: center; gap: 10px;
+      padding: 10px 18px; border-radius: 99px; border: 0; cursor: pointer;
+      background: rgba(10, 25, 50, 0.72); color: var(--text); font: 600 14px -apple-system, sans-serif;
+      backdrop-filter: blur(12px); -webkit-backdrop-filter: blur(12px);
+      box-shadow: 0 10px 30px rgba(0, 0, 0, 0.35);
+      animation: pulse 2.4s ease-in-out infinite;
+    }
+    @keyframes pulse { 50% { box-shadow: 0 10px 30px rgba(0, 0, 0, 0.35), 0 0 0 8px rgba(124, 240, 217, 0.18); } }
+    .screen.capturing .start { display: none; }
+
+    .hint {
+      position: absolute; left: 50%; top: 16px; transform: translateX(-50%);
+      padding: 6px 14px; border-radius: 99px; font-size: 13px; color: #fff;
+      background: rgba(0, 0, 0, 0.55); pointer-events: none; opacity: 0; transition: opacity 0.2s;
+    }
+    .screen.capturing.empty .hint { opacity: 1; }
+
+    .size-label {
+      position: absolute; padding: 2px 6px; border-radius: 3px;
+      background: rgba(0, 0, 0, 0.72); color: #fff;
+      font: 500 11px ui-monospace, Menlo, monospace; pointer-events: none; white-space: nowrap;
+    }
+
+    /* Lightshot-style toolbars, matching the app */
+    .tb {
+      position: absolute; display: flex; padding: 3px; gap: 0;
+      background: linear-gradient(90deg, #fafafa, #e6e6e6);
+      border: 1px solid rgba(0, 0, 0, 0.3); border-radius: 5px;
+    }
+    .tb.v { flex-direction: column; background: linear-gradient(180deg, #fafafa, #e6e6e6); }
+    .tb button {
+      width: 30px; height: 30px; border: 0; border-radius: 4px; margin: 0;
+      background: transparent; color: #383838; cursor: pointer;
+      display: inline-flex; align-items: center; justify-content: center; font-size: 17px; padding: 0;
+    }
+    .tb button:hover { background: rgba(0, 0, 0, 0.08); }
+    .tb button.on { background: rgba(66, 133, 244, 0.28); box-shadow: inset 0 0 0 1px rgba(66, 133, 244, 0.6); }
+    .tb svg { width: 18px; height: 18px; fill: none; stroke: currentColor; stroke-width: 1.9; stroke-linecap: round; stroke-linejoin: round; }
+    .tb .swatch { width: 15px; height: 15px; border-radius: 2px; border: 1px solid rgba(0, 0, 0, 0.5); }
+    [hidden] { display: none !important; }
+
+    .toast {
+      position: absolute; left: 50%; top: 50%; transform: translate(-50%, -50%) scale(0.96);
+      padding: 14px 22px; border-radius: 12px; font-weight: 600;
+      background: rgba(10, 25, 50, 0.85); color: #fff; opacity: 0; pointer-events: none;
+      transition: opacity 0.2s, transform 0.2s;
+    }
+    .toast.show { opacity: 1; transform: translate(-50%, -50%) scale(1); }
+    .demo-caption { text-align: center; color: var(--muted); font-size: 14px; margin-top: 14px; }
+
+    /* Sections */
+    section { padding: 56px 0; }
+    h2 { font-size: 32px; letter-spacing: -0.02em; margin: 0 0 8px; }
+    .sub { color: var(--muted); margin: 0 0 32px; }
+
+    .features { display: grid; grid-template-columns: repeat(3, 1fr); gap: 16px; }
+    .card {
+      background: var(--card); border: 1px solid var(--card-border);
+      border-radius: 14px; padding: 22px;
+    }
+    .card .icon { font-size: 24px; margin-bottom: 8px; }
+    .card h3 { margin: 0 0 6px; font-size: 17px; }
+    .card p { margin: 0; color: var(--muted); font-size: 15px; }
+
+    .keys { display: grid; grid-template-columns: repeat(4, 1fr); gap: 12px; }
+    .key { display: flex; flex-direction: column; gap: 8px; padding: 16px 18px; }
+    .key span { color: var(--muted); font-size: 14px; }
+
+    pre {
+      margin: 0; padding: 18px 20px; overflow-x: auto;
+      background: rgba(3, 12, 30, 0.6); border: 1px solid var(--card-border);
+      border-radius: 12px; font-family: var(--mono); font-size: 14px; line-height: 1.7;
+    }
+    code { font-family: var(--mono); font-size: 0.92em; }
+    pre .c { color: #7d98b3; }
+    .steps { display: grid; grid-template-columns: 1fr 1fr; gap: 16px; }
+    .steps > * { min-width: 0; }
+    .steps h3 { margin: 0 0 10px; font-size: 16px; }
+    .install-steps { margin: 0; padding-left: 20px; }
+    .install-steps li { margin: 0 0 10px; color: var(--muted); }
+    .install-steps li:last-child { margin-bottom: 0; }
+    .install-steps strong { color: var(--text); }
+
+    .note {
+      border-left: 3px solid var(--accent); padding: 12px 18px; margin-top: 24px;
+      background: var(--card); border-radius: 0 10px 10px 0; color: var(--muted); font-size: 15px;
+    }
+    .note strong { color: var(--text); }
+
+    footer { padding: 40px 0 56px; color: var(--muted); font-size: 14px; border-top: 1px solid var(--card-border); margin-top: 32px; }
+
+    @media (max-width: 860px) {
+      .features, .steps { grid-template-columns: 1fr; }
+      .keys { grid-template-columns: 1fr 1fr; }
+      .menubar .left a { display: none; }
+      .win .code, .win .page { font-size: 10px; }
+    }
+  </style>
+</head>
+<body>
+  <nav class="menubar">
+    <div class="left">
+      <strong>Paneless</strong>
+      <a href="#demo">Try it</a>
+      <a href="#features">Features</a>
+      <a href="#shortcuts">Shortcuts</a>
+      <a href="#install">Install</a>
+      <a href="https://github.com/MattSheehanDev/paneless">GitHub</a>
+    </div>
+    <button class="status" id="menubar-capture" title="Capture (⇧⌘9)" aria-label="Start a capture in the demo">
+      <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round"><path d="M4 8V5a1 1 0 0 1 1-1h3M16 4h3a1 1 0 0 1 1 1v3M20 16v3a1 1 0 0 1-1 1h-3M8 20H5a1 1 0 0 1-1-1v-3"/><rect x="8" y="9" width="8" height="6" rx="1.5"/></svg>
+    </button>
+    <span id="clock"></span>
+  </nav>
+
+  <main class="wrap">
+    <header class="hero">
+      <div class="eyebrow">macOS menu bar app · Lightshot-style</div>
+      <h1>Screenshots, <span class="grad">marked up in a snap.</span></h1>
+      <p class="lede">Press <kbd>⇧⌘9</kbd>, drag over anything on your screen, scribble on it, and paste it straight into Slack, a bug report, or a doc. No windows to manage.</p>
+      <div class="ctas">
+        <a class="btn primary" href="https://github.com/MattSheehanDev/paneless/releases/latest/download/Paneless.zip">Download for Mac</a>
+        <a class="btn secondary" href="#demo">Try the demo ↓</a>
+      </div>
+      <p class="fineprint">Free · macOS 14+ · Apple Silicon · <a href="#install">Install steps</a></p>
+    </header>
+
+    <div class="demo-wrap" id="demo">
+      <div class="screen empty" id="screen">
+        <div class="win dark" data-win style="left: 5%; top: 9%; width: 54%; height: 62%;">
+          <div class="bar"><i></i><i></i><i></i><span>CaptureSession.swift</span></div>
+<div class="code"><span class="k">func</span> <span class="f">show</span>() {
+    NSApp.<span class="f">activate</span>()
+    windows.<span class="f">forEach</span> { $0.<span class="f">orderFrontRegardless</span>() }
+    <span class="c">// freeze the screen, then let you draw</span>
+    overlay.<span class="f">beginSelection</span>(at: mouse)
+}
+
+<span class="k">let</span> hotKey = <span class="s">"⇧⌘9"</span></div>
+        </div>
+        <div class="win" data-win style="left: 41%; top: 27%; width: 52%; height: 60%;">
+          <div class="bar"><i></i><i></i><i></i><span>Weekly metrics</span></div>
+          <div class="page">
+            <h4>Signups are up 38%</h4>
+            <span class="pill">This week</span><span class="pill">All regions</span>
+            <div class="chart"><b style="height:35%"></b><b style="height:48%"></b><b style="height:42%"></b><b style="height:60%"></b><b style="height:72%"></b><b style="height:66%"></b><b style="height:95%"></b></div>
+            <p>Circle the spike, add an arrow, and paste it into the thread.</p>
+          </div>
+        </div>
+
+        <canvas id="overlay"></canvas>
+        <div class="hint">Drag to select an area, or click a window</div>
+        <div class="size-label" id="size" hidden></div>
+
+        <div class="tb v" id="side" hidden>
+          <button data-tool="pen" title="Pen"><svg viewBox="0 0 24 24"><path d="M4 20l1-4L16.5 4.5a2.1 2.1 0 0 1 3 3L8 19z"/></svg></button>
+          <button data-tool="line" title="Line"><svg viewBox="0 0 24 24"><path d="M5 19L19 5"/></svg></button>
+          <button data-tool="arrow" title="Arrow"><svg viewBox="0 0 24 24"><path d="M6 18L18 6M9 6h9v9"/></svg></button>
+          <button data-tool="rect" title="Rectangle"><svg viewBox="0 0 24 24"><rect x="4" y="6" width="16" height="12" rx="1"/></svg></button>
+          <button data-tool="marker" title="Marker"><svg viewBox="0 0 24 24"><path d="M4 21h16M9 16l-2.5 2.5H4l3-3M9 16l8.5-8.5-3-3L6 13z"/></svg></button>
+          <button data-tool="emoji" title="Emoji (click again for another)" id="emoji-btn">😀</button>
+          <button data-action="color" title="Color"><span class="swatch" id="swatch"></span></button>
+          <button data-action="undo" title="Undo (⌘Z)"><svg viewBox="0 0 24 24"><path d="M9 14L4 9l5-5M4 9h10a6 6 0 0 1 0 12h-3"/></svg></button>
+        </div>
+        <div class="tb" id="bottom" hidden>
+          <button data-action="copy" title="Copy (⌘C)"><svg viewBox="0 0 24 24"><rect x="8" y="8" width="12" height="12" rx="2"/><path d="M16 8V5a1 1 0 0 0-1-1H5a1 1 0 0 0-1 1v10a1 1 0 0 0 1 1h3"/></svg></button>
+          <button data-action="save" title="Save (⌘S)"><svg viewBox="0 0 24 24"><path d="M12 4v11M7 10l5 5 5-5M5 20h14"/></svg></button>
+          <button data-action="close" title="Close (Esc)"><svg viewBox="0 0 24 24"><path d="M6 6l12 12M18 6L6 18"/></svg></button>
+        </div>
+
+        <button class="start" id="start"><kbd>⇧⌘9</kbd> Click to capture</button>
+        <div class="toast" id="toast"></div>
+      </div>
+      <p class="demo-caption">This is a live demo. Drag to select, pick a tool, draw, and drag your marks around. <kbd>Esc</kbd> cancels.</p>
+    </div>
+
+    <section id="features">
+      <h2>Everything a quick screenshot needs</h2>
+      <p class="sub">Inspired by Lightshot, built natively for the Mac.</p>
+      <div class="features">
+        <div class="card">
+          <div class="icon">✂️</div>
+          <h3>Area, window, or screen</h3>
+          <p>Drag out any area, click a window to grab exactly that window, or click the desktop for the whole screen. Resize with the handles and see the size in pixels.</p>
+        </div>
+        <div class="card">
+          <div class="icon">🖍</div>
+          <h3>Mark it up in place</h3>
+          <p>Pen, line, arrow, rectangle, highlighter, and text, in twelve colors. Scroll to change the thickness while you draw.</p>
+        </div>
+        <div class="card">
+          <div class="icon">😀</div>
+          <h3>Emoji stamps</h3>
+          <p>Pick from smileys, gestures, and symbols like ✅ ⚠️ 🐛. Click to stamp, or drag to make it bigger.</p>
+        </div>
+        <div class="card">
+          <div class="icon">✋</div>
+          <h3>Move anything you've added</h3>
+          <p>Drag text, emoji, arrows, and lines around after you place them. Double-click text to edit it, and <kbd>⌘Z</kbd> undoes it all.</p>
+        </div>
+        <div class="card">
+          <div class="icon">📋</div>
+          <h3>Copy or save, full resolution</h3>
+          <p>Copy straight to the clipboard, or save as PNG or JPEG to a folder you pick in Settings. Retina captures keep every pixel.</p>
+        </div>
+        <div class="card">
+          <div class="icon">🪶</div>
+          <h3>Lives in the menu bar</h3>
+          <p>No Dock icon and no windows to manage. A global hotkey that works everywhere, every display, and an option to launch at login.</p>
+        </div>
+      </div>
+    </section>
+
+    <section id="shortcuts">
+      <h2>Keyboard first</h2>
+      <p class="sub">Everything has a shortcut, so a capture can take two seconds.</p>
+      <div class="keys">
+        <div class="card key"><div><kbd>⇧⌘9</kbd></div><span>Start a capture from anywhere</span></div>
+        <div class="card key"><div><kbd>⌘C</kbd> or <kbd>↩</kbd></div><span>Copy to the clipboard and close</span></div>
+        <div class="card key"><div><kbd>⌘S</kbd></div><span>Save as PNG or JPEG</span></div>
+        <div class="card key"><div><kbd>⌘Z</kbd></div><span>Undo the last mark or move</span></div>
+        <div class="card key"><div><kbd>Esc</kbd></div><span>Cancel the capture</span></div>
+        <div class="card key"><div>Scroll</div><span>Change the line width or text size</span></div>
+        <div class="card key"><div>Double-click</div><span>Edit text you've already placed</span></div>
+        <div class="card key"><div><kbd>⌘,</kbd></div><span>Settings, like the default save folder</span></div>
+      </div>
+    </section>
+
+    <section id="install">
+      <h2>Install</h2>
+      <p class="sub">Free download for macOS 14 or later on Apple Silicon.</p>
+      <div class="steps">
+        <div class="card">
+          <ol class="install-steps">
+            <li><a href="https://github.com/MattSheehanDev/paneless/releases/latest/download/Paneless.zip">Download Paneless.zip</a> and unzip it.</li>
+            <li>Move <strong>Paneless.app</strong> to your Applications folder and open it.</li>
+            <li>macOS blocks it the first time because it isn't notarized. Open <strong>System Settings → Privacy &amp; Security</strong>, scroll down, and click <strong>Open Anyway</strong>.</li>
+            <li>Allow Paneless under <strong>Privacy &amp; Security → Screen &amp; System Audio Recording</strong>, then reopen it.</li>
+          </ol>
+        </div>
+        <div>
+          <h3>Or from Terminal</h3>
+<pre>curl -L -o /tmp/Paneless.zip \
+  https://github.com/MattSheehanDev/paneless/releases/latest/download/Paneless.zip
+ditto -x -k /tmp/Paneless.zip /Applications
+xattr -dr com.apple.quarantine /Applications/Paneless.app
+open /Applications/Paneless.app</pre>
+        </div>
+        <div>
+          <h3>Build from source</h3>
+<pre><span class="c"># xcode-select --install  (if needed)</span>
+git clone https://github.com/MattSheehanDev/paneless
+cd paneless
+make install</pre>
+        </div>
+        <div>
+          <h3>Then capture</h3>
+<pre><span class="c"># anywhere, any app</span>
+⇧⌘9   <span class="c">drag · draw · ⌘C</span></pre>
+        </div>
+      </div>
+      <div class="note">
+        <strong>Screen Recording permission:</strong> macOS asks for it once so Paneless can see your screen. After you install a new version, you may need to allow it again. All versions are on the <a href="https://github.com/MattSheehanDev/paneless/releases">Releases page</a>.
+      </div>
+    </section>
+
+    <footer>
+      Paneless · <a href="https://github.com/MattSheehanDev/paneless">Source on GitHub</a>
+    </footer>
+  </main>
+
+  <script>
+    const clock = document.getElementById("clock");
+    const tickClock = () => {
+      clock.textContent = new Date().toLocaleString(undefined, {
+        weekday: "short", day: "numeric", month: "short", hour: "2-digit", minute: "2-digit",
+      });
+    };
+    tickClock();
+    setInterval(tickClock, 15000);
+
+    // ---- Interactive capture demo, modeled on the real overlay ----
+    const screen = document.getElementById("screen");
+    const canvas = document.getElementById("overlay");
+    const ctx = canvas.getContext("2d");
+    const sizeLabel = document.getElementById("size");
+    const side = document.getElementById("side");
+    const bottom = document.getElementById("bottom");
+    const toast = document.getElementById("toast");
+    const swatch = document.getElementById("swatch");
+    const emojiBtn = document.getElementById("emoji-btn");
+
+    const COLORS = ["#ff0000", "#ff8000", "#ffdd00", "#00be00", "#00c8dc", "#0066ff", "#8c28ff", "#ff00c8", "#000000", "#ffffff"];
+    const EMOJI = ["😀", "✅", "⚠️", "🔥", "👀", "🐛", "🎉", "👍", "❌", "💡"];
+    const HANDLE = 7, GAP = 6;
+
+    let W = 0, H = 0;
+    let capturing = false;
+    let sel = null;          // {x, y, w, h}
+    let snap = null;         // highlighted window or whole screen before a selection exists
+    let drag = null;         // {kind, ...}
+    let tool = null;
+    let color = COLORS[0];
+    let emoji = EMOJI[0];
+    let width = 3;
+    let marks = [];
+    let undoStack = [];
+    let current = null;
+    let hovered = -1;
+
+    const resize = () => {
+      const r = screen.getBoundingClientRect();
+      const changed = r.width !== W || r.height !== H;
+      W = r.width; H = r.height;
+      const dpr = window.devicePixelRatio || 1;
+      canvas.width = Math.round(W * dpr); canvas.height = Math.round(H * dpr);
+      ctx.setTransform(dpr, 0, 0, dpr, 0, 0);
+      // The windows reflow on resize, so a selection made against the old layout is meaningless.
+      if (changed && capturing) end();
+      else render();
+    };
+
+    const local = (e) => {
+      const r = screen.getBoundingClientRect();
+      return { x: Math.min(Math.max(e.clientX - r.left, 0), W), y: Math.min(Math.max(e.clientY - r.top, 0), H) };
+    };
+    const contains = (r, p) => r && p.x >= r.x && p.x <= r.x + r.w && p.y >= r.y && p.y <= r.y + r.h;
+    const rectFrom = (a, b) => ({ x: Math.min(a.x, b.x), y: Math.min(a.y, b.y), w: Math.abs(a.x - b.x), h: Math.abs(a.y - b.y) });
+
+    // Front-to-back, like CGWindowList: later DOM siblings sit on top.
+    const windowRects = () => [...screen.querySelectorAll("[data-win]")].reverse()
+      .map((el) => ({ x: el.offsetLeft, y: el.offsetTop, w: el.offsetWidth, h: el.offsetHeight }));
+    const snapTarget = (p) => windowRects().find((r) => contains(r, p)) || { x: 0, y: 0, w: W, h: H };
+
+    const handles = (r) => [
+      ["nw", r.x, r.y], ["n", r.x + r.w / 2, r.y], ["ne", r.x + r.w, r.y], ["e", r.x + r.w, r.y + r.h / 2],
+      ["se", r.x + r.w, r.y + r.h], ["s", r.x + r.w / 2, r.y + r.h], ["sw", r.x, r.y + r.h], ["w", r.x, r.y + r.h / 2],
+    ];
+    const handleAt = (p) => sel && handles(sel).find(([, x, y]) => Math.abs(p.x - x) <= HANDLE / 2 + 4 && Math.abs(p.y - y) <= HANDLE / 2 + 4);
+
+    // ---- Marks ----
+    const segDist = (p, a, b) => {
+      const dx = b.x - a.x, dy = b.y - a.y, len = dx * dx + dy * dy;
+      const t = len ? Math.max(0, Math.min(1, ((p.x - a.x) * dx + (p.y - a.y) * dy) / len)) : 0;
+      return Math.hypot(p.x - (a.x + t * dx), p.y - (a.y + t * dy));
+    };
+    const strokeW = (m) => (m.type === "marker" ? Math.max(m.width * 4, 12) : m.width);
+    const hit = (m, p) => {
+      const tol = Math.max(strokeW(m) / 2 + 4, 6);
+      if (m.type === "emoji") return Math.abs(p.x - m.a.x) <= m.size / 2 && Math.abs(p.y - m.a.y) <= m.size / 2;
+      if (m.type === "rect") {
+        const r = rectFrom(m.a, m.b);
+        const c = [{ x: r.x, y: r.y }, { x: r.x + r.w, y: r.y }, { x: r.x + r.w, y: r.y + r.h }, { x: r.x, y: r.y + r.h }];
+        return c.some((q, i) => segDist(p, q, c[(i + 1) % 4]) <= tol);
+      }
+      if (m.points) return m.points.some((q, i) => segDist(p, q, m.points[Math.max(i - 1, 0)]) <= tol);
+      return segDist(p, m.a, m.b) <= tol || (m.type === "arrow" && Math.hypot(p.x - m.b.x, p.y - m.b.y) <= 14);
+    };
+    const markAt = (p) => { for (let i = marks.length - 1; i >= 0; i--) if (hit(marks[i], p)) return i; return -1; };
+    const moved = (m, dx, dy) => {
+      const mv = (q) => ({ x: q.x + dx, y: q.y + dy });
+      return { ...m, a: m.a && mv(m.a), b: m.b && mv(m.b), points: m.points && m.points.map(mv) };
+    };
+    const bounds = (m) => {
+      if (m.type === "emoji") return { x: m.a.x - m.size / 2, y: m.a.y - m.size / 2, w: m.size, h: m.size };
+      const pts = m.points || [m.a, m.b];
+      const xs = pts.map((q) => q.x), ys = pts.map((q) => q.y), pad = strokeW(m) / 2 + (m.type === "arrow" ? 8 : 0);
+      return { x: Math.min(...xs) - pad, y: Math.min(...ys) - pad, w: Math.max(...xs) - Math.min(...xs) + pad * 2, h: Math.max(...ys) - Math.min(...ys) + pad * 2 };
+    };
+
+    const drawMark = (m) => {
+      ctx.save();
+      ctx.strokeStyle = ctx.fillStyle = m.color;
+      ctx.lineWidth = strokeW(m); ctx.lineCap = "round"; ctx.lineJoin = "round";
+      if (m.type === "marker") ctx.globalAlpha = 0.4;
+      if (m.points) {
+        ctx.beginPath();
+        m.points.forEach((q, i) => (i ? ctx.lineTo(q.x, q.y) : ctx.moveTo(q.x, q.y)));
+        if (m.points.length === 1) ctx.lineTo(m.points[0].x + 0.01, m.points[0].y);
+        ctx.stroke();
+      } else if (m.type === "rect") {
+        const r = rectFrom(m.a, m.b);
+        ctx.lineJoin = "miter"; ctx.strokeRect(r.x, r.y, r.w, r.h);
+      } else if (m.type === "emoji") {
+        ctx.font = `${m.size / 1.2}px -apple-system, "Apple Color Emoji", "Segoe UI Emoji", sans-serif`;
+        ctx.textAlign = "center"; ctx.textBaseline = "middle";
+        ctx.fillText(m.emoji, m.a.x, m.a.y);
+      } else {
+        const { a, b } = m, len = Math.hypot(b.x - a.x, b.y - a.y);
+        let end = b;
+        if (m.type === "arrow" && len > 1) {
+          const head = Math.min(Math.max(12, m.width * 4), len), ux = (b.x - a.x) / len, uy = (b.y - a.y) / len;
+          end = { x: b.x - ux * head, y: b.y - uy * head };
+          ctx.beginPath();
+          ctx.moveTo(b.x, b.y);
+          ctx.lineTo(end.x - uy * head * 0.55, end.y + ux * head * 0.55);
+          ctx.lineTo(end.x + uy * head * 0.55, end.y - ux * head * 0.55);
+          ctx.closePath(); ctx.fill();
+        }
+        ctx.beginPath(); ctx.moveTo(a.x, a.y); ctx.lineTo(end.x, end.y); ctx.stroke();
+      }
+      ctx.restore();
+    };
+
+    const dashed = (r, dash = 4) => {
+      ctx.save();
+      ctx.lineWidth = 1;
+      ctx.strokeStyle = "#fff"; ctx.strokeRect(r.x - 0.5, r.y - 0.5, r.w + 1, r.h + 1);
+      ctx.setLineDash([dash, dash]); ctx.strokeStyle = "#000"; ctx.strokeRect(r.x - 0.5, r.y - 0.5, r.w + 1, r.h + 1);
+      ctx.restore();
+    };
+
+    // ---- Rendering ----
+    const render = () => {
+      ctx.clearRect(0, 0, W, H);
+      screen.classList.toggle("empty", capturing && !sel);
+      if (!capturing) { sizeLabel.hidden = side.hidden = bottom.hidden = true; return; }
+
+      const highlight = !sel && !drag ? snap : null;
+      const hole = sel || highlight;
+      ctx.fillStyle = "rgba(0, 0, 0, 0.45)";
+      ctx.beginPath(); ctx.rect(0, 0, W, H);
+      if (hole) ctx.rect(hole.x, hole.y, hole.w, hole.h);
+      ctx.fill("evenodd");
+
+      if (highlight) {
+        ctx.save(); ctx.lineWidth = 3; ctx.strokeStyle = "rgba(66, 133, 244, 0.9)";
+        ctx.strokeRect(highlight.x + 1.5, highlight.y + 1.5, highlight.w - 3, highlight.h - 3); ctx.restore();
+      }
+
+      if (sel) {
+        ctx.save();
+        ctx.beginPath(); ctx.rect(sel.x, sel.y, sel.w, sel.h); ctx.clip();
+        marks.forEach(drawMark);
+        if (current) drawMark(current);
+        const outlined = drag && drag.kind === "mark" ? drag.index : (!drag ? hovered : -1);
+        if (outlined >= 0 && marks[outlined]) { const b = bounds(marks[outlined]); dashed({ x: b.x - 3, y: b.y - 3, w: b.w + 6, h: b.h + 6 }, 3); }
+        ctx.restore();
+
+        dashed(sel);
+        handles(sel).forEach(([, x, y]) => {
+          ctx.fillStyle = "#000"; ctx.fillRect(x - HANDLE / 2, y - HANDLE / 2, HANDLE, HANDLE);
+          ctx.strokeStyle = "#fff"; ctx.lineWidth = 1; ctx.strokeRect(x - HANDLE / 2 + 0.5, y - HANDLE / 2 + 0.5, HANDLE - 1, HANDLE - 1);
+        });
+      }
+      layoutChrome(hole);
+    };
+
+    const layoutChrome = (box) => {
+      if (!box || (drag && drag.kind === "create" && !sel)) { sizeLabel.hidden = true; } else {
+        const scale = 2; // pretend Retina, like the real size label
+        sizeLabel.textContent = `${Math.round(box.w * scale)} × ${Math.round(box.h * scale)}` + (tool && tool !== "emoji" ? `   ${width}px` : "");
+        sizeLabel.hidden = false;
+        let top = box.y - sizeLabel.offsetHeight - 9, left = box.x;
+        if (top < 2) { top = box.y + 5; left = box.x + 5; }
+        sizeLabel.style.top = `${top}px`;
+        sizeLabel.style.left = `${Math.min(Math.max(left, 2), W - sizeLabel.offsetWidth - 2)}px`;
+      }
+
+      const showBars = sel && !drag;
+      side.hidden = bottom.hidden = !showBars;
+      if (!showBars) return;
+      const sw = side.offsetWidth, sh = side.offsetHeight, bw = bottom.offsetWidth, bh = bottom.offsetHeight;
+      let sx = sel.x + sel.w + GAP;
+      if (sx + sw > W) { sx = sel.x - GAP - sw; if (sx < 0) sx = sel.x + sel.w - GAP - sw; }
+      const sy = Math.min(Math.max(sel.y + sel.h - sh, 0), H - sh);
+      let by = sel.y + sel.h + GAP;
+      if (by + bh > H) { by = sel.y - GAP - bh; if (by < 0) by = sel.y + sel.h - GAP - bh; }
+      let bx = Math.min(Math.max(sel.x + sel.w - bw, 0), W - bw);
+      if (bx < sx + sw && bx + bw > sx && by < sy + sh && by + bh > sy) bx = Math.max(sx - GAP - bw, 0);
+      Object.assign(side.style, { left: `${sx}px`, top: `${sy}px` });
+      Object.assign(bottom.style, { left: `${bx}px`, top: `${by}px` });
+    };
+
+    const cursorAt = (p) => {
+      if (!capturing) return "default";
+      if (!sel) return "crosshair";
+      const h = handleAt(p);
+      if (h) return { n: "ns-resize", s: "ns-resize", e: "ew-resize", w: "ew-resize", nw: "nwse-resize", se: "nwse-resize", ne: "nesw-resize", sw: "nesw-resize" }[h[0]];
+      if (contains(sel, p) && markAt(p) >= 0) return "grab";
+      if (contains(sel, p)) return tool ? "crosshair" : "move";
+      return marks.length ? "default" : "crosshair";
+    };
+
+    // ---- Capture lifecycle ----
+    const begin = () => {
+      capturing = true; sel = null; drag = null; current = null; marks = []; undoStack = []; hovered = -1;
+      screen.classList.add("capturing");
+      render();
+    };
+    const end = () => {
+      capturing = false; sel = null; snap = null; drag = null; marks = []; current = null;
+      screen.classList.remove("capturing");
+      render();
+    };
+    const flash = (text) => {
+      toast.textContent = text; toast.classList.add("show");
+      setTimeout(() => { toast.classList.remove("show"); end(); }, 1300);
+    };
+
+    document.getElementById("start").addEventListener("click", begin);
+    document.getElementById("menubar-capture").addEventListener("click", () => {
+      document.getElementById("demo").scrollIntoView({ behavior: "smooth", block: "center" });
+      begin();
+    });
+
+    // ---- Pointer handling ----
+    canvas.addEventListener("pointerdown", (e) => {
+      if (!capturing || e.button !== 0) return;
+      canvas.setPointerCapture(e.pointerId);
+      const p = local(e);
+      if (sel) {
+        const h = handleAt(p);
+        if (h) { drag = { kind: "resize", h: h[0], orig: { ...sel } }; return render(); }
+        const idx = contains(sel, p) ? markAt(p) : -1;
+        if (idx >= 0) { undoStack.push(marks.slice()); drag = { kind: "mark", index: idx, start: p, orig: marks[idx] }; return render(); }
+        if (tool && contains(sel, p)) {
+          if (tool === "emoji") {
+            undoStack.push(marks.slice());
+            current = { type: "emoji", emoji, a: p, size: 16 + width * 6, color };
+            drag = { kind: "emoji", start: p };
+          } else {
+            current = ["pen", "marker"].includes(tool)
+              ? { type: tool, points: [p], color, width }
+              : { type: tool, a: p, b: p, color, width };
+            drag = { kind: "draw" };
+          }
+          return render();
+        }
+        if (contains(sel, p)) { drag = { kind: "move", start: p, orig: { ...sel } }; return render(); }
+        if (marks.length) return;
+      }
+      sel = null; drag = { kind: "create", start: p };
+      render();
+    });
+
+    canvas.addEventListener("pointermove", (e) => {
+      if (!capturing) return;
+      const p = local(e);
+      if (!drag) {
+        hovered = sel && contains(sel, p) ? markAt(p) : -1;
+        snap = sel ? null : snapTarget(p);
+        canvas.style.cursor = cursorAt(p);
+        return render();
+      }
+      if (drag.kind === "create") {
+        const r = rectFrom(drag.start, p);
+        sel = r.w >= 3 && r.h >= 3 ? r : null;
+      } else if (drag.kind === "move") {
+        const o = drag.orig;
+        sel = { ...o, x: Math.min(Math.max(o.x + p.x - drag.start.x, 0), W - o.w), y: Math.min(Math.max(o.y + p.y - drag.start.y, 0), H - o.h) };
+      } else if (drag.kind === "resize") {
+        const o = drag.orig;
+        let x1 = o.x, y1 = o.y, x2 = o.x + o.w, y2 = o.y + o.h;
+        if (drag.h.includes("w")) x1 = p.x; if (drag.h.includes("e")) x2 = p.x;
+        if (drag.h.includes("n")) y1 = p.y; if (drag.h.includes("s")) y2 = p.y;
+        sel = rectFrom({ x: x1, y: y1 }, { x: x2, y: y2 });
+      } else if (drag.kind === "draw") {
+        if (current.points) current.points.push(p); else current.b = p;
+      } else if (drag.kind === "emoji") {
+        const d = Math.hypot(p.x - drag.start.x, p.y - drag.start.y) * 2;
+        if (d >= 16) current.size = d;
+      } else if (drag.kind === "mark") {
+        marks[drag.index] = moved(drag.orig, p.x - drag.start.x, p.y - drag.start.y);
+        canvas.style.cursor = "grabbing";
+      }
+      render();
+    });
+
+    canvas.addEventListener("pointerup", (e) => {
+      if (!drag) return;
+      const p = local(e);
+      if (drag.kind === "create" && !sel) sel = snapTarget(drag.start);
+      if (drag.kind === "resize" && sel && (sel.w < 1 || sel.h < 1)) sel = null;
+      if (drag.kind === "draw" && current) { undoStack.push(marks.slice()); marks.push(current); }
+      if (drag.kind === "emoji" && current) marks.push(current);
+      if (drag.kind === "mark" && p.x === drag.start.x && p.y === drag.start.y) undoStack.pop();
+      current = null; drag = null; snap = null;
+      canvas.style.cursor = cursorAt(p);
+      render();
+    });
+
+    canvas.addEventListener("contextmenu", (e) => { if (capturing) { e.preventDefault(); end(); } });
+
+    canvas.addEventListener("wheel", (e) => {
+      if (!capturing || !tool) return;
+      e.preventDefault();
+      width = Math.min(Math.max(width + (e.deltaY < 0 ? 1 : -1), 1), 30);
+      render();
+    }, { passive: false });
+
+    // ---- Toolbars ----
+    const setTool = (t) => {
+      tool = t;
+      side.querySelectorAll("[data-tool]").forEach((b) => b.classList.toggle("on", b.dataset.tool === tool));
+      render();
+    };
+    side.addEventListener("click", (e) => {
+      const b = e.target.closest("button"); if (!b) return;
+      if (b.dataset.tool === "emoji" && tool === "emoji") {
+        emoji = EMOJI[(EMOJI.indexOf(emoji) + 1) % EMOJI.length];
+        emojiBtn.textContent = emoji;
+      } else if (b.dataset.tool) {
+        setTool(tool === b.dataset.tool ? null : b.dataset.tool);
+      } else if (b.dataset.action === "color") {
+        color = COLORS[(COLORS.indexOf(color) + 1) % COLORS.length];
+        swatch.style.background = color;
+        if (!tool || tool === "emoji") setTool("pen");
+      } else if (b.dataset.action === "undo") {
+        if (undoStack.length) marks = undoStack.pop();
+        render();
+      }
+    });
+    bottom.addEventListener("click", (e) => {
+      const b = e.target.closest("button"); if (!b) return;
+      if (b.dataset.action === "copy") flash("📋 Copied to clipboard");
+      else if (b.dataset.action === "save") flash("💾 Saved Screenshot.png");
+      else end();
+    });
+    swatch.style.background = color;
+
+    document.addEventListener("keydown", (e) => {
+      const cmd = e.metaKey || e.ctrlKey;
+      if (cmd && e.shiftKey && (e.key === "9" || e.key === "(" || e.code === "Digit9")) {
+        e.preventDefault();
+        document.getElementById("demo").scrollIntoView({ behavior: "smooth", block: "center" });
+        return begin();
+      }
+      if (!capturing) return;
+      if (e.key === "Escape") return end();
+      if (!sel) return;
+      if (cmd && e.key.toLowerCase() === "z") { e.preventDefault(); if (undoStack.length) marks = undoStack.pop(); return render(); }
+      if ((cmd && e.key.toLowerCase() === "c") || e.key === "Enter") { e.preventDefault(); return flash("📋 Copied to clipboard"); }
+      if (cmd && e.key.toLowerCase() === "s") { e.preventDefault(); return flash("💾 Saved Screenshot.png"); }
+    });
+
+    new ResizeObserver(resize).observe(screen);
+    resize();
+  </script>
+</body>
+</html>
